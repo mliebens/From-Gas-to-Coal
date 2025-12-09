@@ -1,13 +1,30 @@
+
+
+** Drop later**
+** ANALYSIS
+clear
+estimates clear
+cd "G:\.shortcut-targets-by-id\1CF1NeSl2jlOzAgSnLr8nfeqyYky2Noa1\Mario and Alex paper\"
+use DataForAnalysis.dta
+keep if country == "Czechia" | country == "Germany" | country == "Ireland" | country == "Italy" | country == "Netherlands" | country == "Poland"
+save "G:\.shortcut-targets-by-id\1CF1NeSl2jlOzAgSnLr8nfeqyYky2Noa1\Mario and Alex paper\Submissions\JEBO Special Issue\Dataset_LiebensteinerKimani.dta", replace
+clear
+cd "G:\.shortcut-targets-by-id\1CF1NeSl2jlOzAgSnLr8nfeqyYky2Noa1\Mario and Alex paper\Submissions\JEBO Special Issue\"
+********************
+
+
+
+
 ** Stata code
-** Liebensteiner, M. & Kimani, A. (2025) "From Gas to Coal: Environmental and Health Impacts of Europe's Energy Crisis"
-** Software package: Stata 16.1
+** Liebensteiner, M. & Kimani, A. (2025) "Environmental and Health Costs of Europe's Shift from Gas to Coal Amidst the Energy Crisis"
+** Software package: Stata 18
 
 
 ** ANALYSIS
 clear
 estimates clear
-// change directory to where the dataset is stored
-cd "G:\.shortcut-targets-by-id\1CF1NeSl2jlOzAgSnLr8nfeqyYky2Noa1\Mario and Alex paper\Submissions"
+// change directory to where the dataset is stored via the command
+* cd "ENTER_PATH"
 use Dataset_LiebensteinerKimani.dta
 
 replace gen_gas = gen_gas + gen_coalderivedgas
@@ -221,8 +238,6 @@ replace rho_hardcoal = 0.404 if country == "Poland" & year == 2022
 replace rho_hardcoal = 0.410 if country == "Poland" & year == 2023
 replace rho_hardcoal = 0.410 if country == "Poland" & year == 2024
 
-*replace rho_hardcoal = rho_hardcoal+0.02
-
 
 gen em_gas = gen_gas * 0.2008 / rho_gas
 gen em_hardcoal = gen_hardcoal * 0.3382 / rho_hardcoal
@@ -236,7 +251,7 @@ replace em=. if em==0
 label variable em "Coal- and gas-based emissions (tCO2)"
 
 
-*** Air Pollution
+*** Health impacts
 ****** Sources:
 ****** https://www.umweltbundesamt.de/sites/default/files/medien/1410/publikationen/2019-11-29_texte_141-2019_emissionsfaktoren-grossfeuerungsanlagen-en.pdf
 ****** Lignite: Table 9, Hard coal: Table 16, Natural Gas: Table 45, Table 46
@@ -254,17 +269,7 @@ gen PM_hardcoal = gen_hardcoal * 1.15 / 277.778
 gen NOx_naturalgas = gen_gas   * 27.48 / 277.778
 gen SO2_naturalgas   = gen_gas   * 0.2 / 277.778
 gen PM_naturalgas   = gen_gas  * 0.09 / 277.778
-
-gen NOx = (NOx_lignite + NOx_hardcoal + NOx_naturalgas)
-gen SO2 = (SO2_lignite + SO2_hardcoal + SO2_naturalgas)
-gen PM = (PM_lignite + PM_hardcoal + PM_naturalgas)
-
-label variable NOx "Nitrogenoxide NOx (Kg)"
-label variable SO2 "Sulfurdioxide SO2 (Kg)"
-label variable PM "Particulate matter PM2.5 (Kg)"
-
-
-* Health impacts
+*
 * source: Markandya & Wilkinson (2007, the Lancet): "Electricity generation and health", Table 2
 ** Deaths per TWh --> convert from TWh to MWh
 gen deaths_lignite = gen_lignite*(32.6/1000000) 
@@ -275,20 +280,25 @@ gen illnesses_lignite = gen_lignite*(298/1000000)
 gen illnesses_hardcoal = gen_hardcoal*(225/1000000) 
 gen illnesses_naturalgas = gen_gas*(30/1000000) 
 
+
+*total emissions in tonnes*
+gen NOx = (NOx_lignite + NOx_hardcoal + NOx_naturalgas)
+gen SO2 = (SO2_lignite + SO2_hardcoal + SO2_naturalgas)
+gen PM = (PM_lignite + PM_hardcoal + PM_naturalgas)
 gen deaths = (deaths_lignite + deaths_hardcoal + deaths_naturalgas)
 gen illnesses = (illnesses_lignite + illnesses_hardcoal + illnesses_naturalgas)
-
+label variable NOx "Nitrogenoxide NOx (Kg)"
+label variable SO2 "Sulfurdioxide SO2 (Kg)"
+label variable PM "Particulate matter PM2.5 (Kg)"
 label variable deaths "Premature deaths"
 label variable illnesses "Serious illnesses"
 
 
-** Build logs
 foreach x in NOx SO2 PM deaths illnesses {
 	gen log_`x' = log(`x')	
 	}
 
 
-** Marginal costs
 gen MC_gas = (Pgas + 0.2008*Pco2) / 0.561
 gen MC_coal = (Phardcoal + 0.39*Pco2) / 0.39
 
@@ -303,18 +313,6 @@ label variable MC_coal "Marginal costs coal"
 
 gen Phypco2=(0.39*Pgas-0.561*Phardcoal)/(0.39*0.561-0.39*0.2008)
 
-
-/*
-preserve
-		keep if country=="Germany" | country=="Poland" | country=="Italy" | country=="Czechia" | country=="Netherlands" | country=="Ireland" 
-		collapse (mean) em_mean=em (sum) em_total=em, by(date)
-		gen crisis = 0	
-		replace crisis = 850000 if date>=date("01jul2021", "DMY") & date<=date("31dec2022", "DMY")
-		twoway area crisis date, color(gs14%50) || ///
-		tsline em_total, lcolor(red) lwidth(thin) || ///
-		, graphregion(color(white)) bgcolor(white) xlabel(`=d(1jan2015)' `=d(1jan2016)' `=d(1jan2017)' `=d(1jan2018)' `=d(1jan2019)' `=d(1jan2020)' `=d(1jan2021)' `=d(1jan2022)' `=d(1jan2023)' `=d(1jan2024)') scale(0.7) xtitle()
-restore
-*/
 		
 gen baseload = gen_runofriverandpoundage + gen_waterreservoir + gen_nuclear + gen_geothermal  // Baseload generation
 gen vre = gen_solar + gen_windoffshore + gen_windonshore // variable renewable energy generation
@@ -349,18 +347,12 @@ tab year, gen(i_year)
 
 
 
-
-
-
 ******* Empirical Analysis: 
 
-
 ** Two-stage residual inclusion approach (2SRI):
-*** First stage 1 (hard coal price regression)
 eststo fir1: reg Phardcoal Phardcoal_Newcastle Pgas_LNGjap baseload load vre i.ID#i.year i.dow i.month, robust
 predict double v_coal, resid  // save residuals
 label var v_coal "Coal price residual"
-*** First stage 2 (gas price regression)
 test Phardcoal_Newcastle Pgas_LNGjap
 eststo fir2: reg Pgas Phardcoal_Newcastle Pgas_LNGjap baseload load vre i.ID#i.year i.dow i.month, robust
 predict double v_gas, resid   // save residuals
@@ -368,16 +360,14 @@ label var v_gas "Gas price residual"
 
 test Phardcoal_Newcastle Pgas_LNGjap
 
-** Second stage 
 eststo sec: ivreg2 gen_coal coalcheaperthangas v_gas v_coal baseload load vre i.ID#i.year i.dow i.month, robust bw(2)
 	** This is the alternative bootstrap procedure:
 	*bootstrap, reps(50) nodrop force: xtivreg2 gen_coal coalcheaperthangas v_gas v_coal baseload load vre i_dow* i_month* i_year*, fe robust level(95) 
 	
 	** Obtain fist-stage F-statistic:
 	* ivreg2 gen_coal (Phardcoal Pgas = Phardcoal_Newcastle Pgas_LNGjap) baseload load vre i.ID#i.year i.dow i.month, robust bw(2)
+	
 
-
-** Produce regression output:
 esttab fir1 fir2 sec using "table_2sri.tex", replace ///
     label se booktabs alignment(c) ///
     mtitles("1st Stage: Coal Price" "1st Stage: Gas Price" ///
@@ -389,8 +379,7 @@ esttab fir1 fir2 sec using "table_2sri.tex", replace ///
           fmt(2 0 0 0 0 3)) ///
     star(* 0.10 ** 0.05 *** 0.01) nonotes		
 	
-	
-	
+
 ** Stationarity tests:
 	xtset ID date
 	* 1. Residualize
@@ -413,7 +402,8 @@ esttab fir1 fir2 sec using "table_2sri.tex", replace ///
 	dfuller r_Pgas if country=="Germany", lags(7)
 
 	
-** Fig 3a: coal electricity	
+	
+	
 foreach x in Czechia Germany Italy Poland Netherlands Ireland {
 	di "`x'"1
 	eststo `x': ivreg2 gen_coal coalcheaperthangas v_gas v_coal baseload load vre i.dow i.month i.year if country=="`x'", robust level(95) bw(2)
@@ -434,7 +424,7 @@ coefplot All, bylabel((1) ALL) || ///
 estimates clear
 
 
-** Fig 3b: log coal electricity	
+	
 foreach x in Czechia Germany Italy Poland Netherlands Ireland {
 	di "`x'"
 	eststo `x': ivreg2 log_gen_coal coalcheaperthangas v_gas v_coal baseload load vre i.dow i.month i.year if country=="`x'", robust level(95) bw(2)
@@ -455,7 +445,7 @@ coefplot All, bylabel((1) ALL) || ///
 estimates clear
 	
 	
-** Fig 4a: CO2 emissions		
+	
 foreach x in Czechia Germany Italy Poland Netherlands Ireland {
 	display "Country ==  `x' "
 	eststo `x': ivreg2 em coalcheaperthangas v_gas v_coal baseload load vre i.dow i.month i.year if country=="`x'", robust level(95) bw(2)
@@ -475,8 +465,7 @@ coefplot All, bylabel((1) ALL) || ///
 	graph export Estimates.png, replace
 estimates clear
 
-
-** Fig 4b: log CO2 emissions			
+	
 gen log_em = log(em)
 foreach x in Czechia Germany Italy Poland Netherlands Ireland {
 	display "Country ==  `x' "
@@ -498,7 +487,6 @@ coefplot All, bylabel((1) ALL) || ///
 estimates clear
 
 
-** Fig 5a: air pollution	
 eststo PM: ivreg2 PM coalcheaperthangas v_gas v_coal baseload load vre i.ID#i.year i.dow i.month, robust level(95) bw(2)
 eststo NOx: ivreg2 NOx coalcheaperthangas v_gas v_coal baseload load vre i.ID#i.year i.dow i.month, robust level(95) bw(2)
 eststo SO2: ivreg2 SO2 coalcheaperthangas v_gas v_coal baseload load vre i.ID#i.year i.dow i.month, robust level(95) bw(2)
@@ -513,7 +501,6 @@ coefplot PM, bylabel((1) PM2.5) || ///
 	graph export health.png, replace
 estimates clear
 
-** Fig 5b: log air pollution	
 eststo PM: ivreg2 log_PM coalcheaperthangas v_gas v_coal baseload load vre i.ID#i.year i.dow i.month, robust level(95) bw(2)
 eststo NOx: ivreg2 log_NOx coalcheaperthangas v_gas v_coal baseload load vre i.ID#i.year i.dow i.month, robust level(95) bw(2)
 eststo SO2: ivreg2 log_SO2 coalcheaperthangas v_gas v_coal baseload load vre i.ID#i.year i.dow i.month, robust level(95) bw(2)
@@ -528,7 +515,6 @@ coefplot PM, bylabel((1) PM2.5) || ///
 estimates clear
 
 
-** Fig 6a: health	
 eststo deaths: ivreg2 deaths coalcheaperthangas v_gas v_coal baseload load vre i.ID#i.year i.dow i.month, robust level(95) bw(2)
 eststo illnesses: ivreg2 illnesses coalcheaperthangas v_gas v_coal baseload load vre i.ID#i.year i.dow i.month, robust level(95) bw(2)
 grstyle init
@@ -540,7 +526,6 @@ coefplot deaths, bylabel((1) Deaths) || ///
 	graph export deathsillnesses.png, replace
 estimates clear
 
-** Fig 6b: log health	
 eststo deaths: ivreg2 log_deaths coalcheaperthangas v_gas v_coal baseload load vre i.ID#i.year i.dow i.month, robust level(95) bw(2)
 eststo illnesses: ivreg2 log_illnesses coalcheaperthangas v_gas v_coal baseload load vre i.ID#i.year i.dow i.month, robust level(95) bw(2)
 coefplot deaths, bylabel((1) Deaths) || ///
@@ -572,8 +557,8 @@ estimates clear
 		ytitle("Predicted coal generation (MWh per country-day)") ///
 		xtitle("Coal-gas spread quintile") ///
 		xline(3.5, lpattern(dash) lcolor(gs8) lwidth(medthick)) ///
-		text(189000 2  "(MC{subscript:coal} > MC{subscript:gas})", size(small)) ///
-		text(189000 5  "(MC{subscript:coal} < MC{subscript:gas})", size(small)) ///
+		text(189000 2  "(MC_coal > MC_gas)", size(small)) ///
+		text(189000 5  "(MC_coal < MC_gas)", size(small)) ///
 		name(fig_bins, replace)	
 		graph export bins.png, replace
 		
@@ -606,28 +591,174 @@ estimates clear
 	, keep(Help) levels(95) msize(1) msymbol(dh) mcolor(black) ciopts(recast(rcap) color(black)) xline(0, lcolor(gray) lpattern(dash)) mlabel mlabformat(%9.0f) mlabposition(12) mlabcolor(black) mlabsize(vsmall) graphregion(color(white) lwidth(vvthin)) bycoefs name(gr_1, replace)	xscale(range(0 22000)) xlabel(0(5000)25000)
 	graph export lags.png, replace
 
-		
-***** DESCRIPTIVE FIGURES
+
+** Robustness: Ucertainty Index VIX
+	ivreg2 gen_coal ///
+		coalcheaperthangas v_gas v_coal ///
+		vix ///
+		baseload load vre i.ID##i.year i.dow i.month, robust bw(2)
+	eststo vix1
+
+	ivreg2 gen_coal ///
+		coalcheaperthangas v_gas v_coal ///
+		vix L.vix ///
+		baseload load vre i.ID##i.year i.dow i.month, robust bw(2)
+	eststo vix2
+	
+** Robustness: switching indicator/price spread and price levels
+
+	label var coalcheaperthangas "$\mathbbm{1}(MC_{gas}>MC_{coal})$"
+	label var spread             "$MC_{gas}-MC_{coal}$"
+	label var Pgas               "$P_{gas}$"
+	label var Phardcoal          "$P_{coal}$"
+	label var v_gas              "$\hat{\varepsilon}_{gas}$"
+	label var v_coal             "$\hat{\varepsilon}_{coal}$"
 
 
-** Figure 1a
-gen crisis = 0	
-replace crisis = 400 if date>=date("01jul2021", "DMY") & date<=date("31dec2022", "DMY")
-twoway area crisis date if country=="Germany", color(gs14%50) || tsline Pgas if country=="Germany", lcolor(blue) lwidth(thin) || tsline Phardcoal if country=="Germany", lcolor(red) lwidth(thin) lpattern(dash) || tsline Pco2 if country=="Germany", lcolor(green) lwidth(thin) lpattern(longdash) yaxis(2) graphregion(color(white)) bgcolor(white) ytitle("Prices of natural gas and hard coal (€/MWh)") ytitle("Price EU emission allowances (€/tCO2)", axis(2)) xtitle("") scale(0.7) title("") recast(line) ymlabel(##5, angle(0)) ylabel(0(10)120, axis(2) angle(0)) xlabel(`=d(1jan2015)' `=d(1jan2016)' `=d(1jan2017)' `=d(1jan2018)' `=d(1jan2019)' `=d(1jan2020)' `=d(1jan2021)' `=d(1jan2022)' `=d(1jan2023)' `=d(1jan2024)') legend(row(3) order(2 "Dutch TTF gas future" 3 "API2 coal future" 4 "EUA carbon emissions future") position(11) ring(0)) ylabel(, angle(0)) ttext(380 `=d(10apr2022)' "Crisis period", place(n))
-graph export CommodityPrices.png, replace
-drop crisis
+	* (1) Indicator + P_gas
+	ivreg2 gen_coal coalcheaperthangas Pgas v_gas v_coal ///
+		baseload load vre i.ID##i.year i.dow i.month, robust bw(2)
+	eststo sec_ind_Pgas
+	estadd local CYFE    "Yes"
+	estadd local MonthFE "Yes"
+	estadd local DOWFE   "Yes"
+
+	* (2) Indicator + P_coal
+	ivreg2 gen_coal coalcheaperthangas Phardcoal v_gas v_coal ///
+		baseload load vre i.ID##i.year i.dow i.month, robust bw(2)
+	eststo sec_ind_Pcoal
+	estadd local CYFE    "Yes"
+	estadd local MonthFE "Yes"
+	estadd local DOWFE   "Yes"
+
+	* (3) Levels only (P_gas + P_coal)
+	ivreg2 gen_coal Pgas Phardcoal v_gas v_coal ///
+		baseload load vre i.ID##i.year i.dow i.month, robust bw(2)
+	eststo sec_PgasPcoal
+	estadd local CYFE    "Yes"
+	estadd local MonthFE "Yes"
+	estadd local DOWFE   "Yes"
+
+	* (4) Spread + P_gas
+	ivreg2 gen_coal spread Pgas v_gas v_coal ///
+		baseload load vre i.ID##i.year i.dow i.month, robust bw(2)
+	eststo sec_spread_gas
+	estadd local CYFE    "Yes"
+	estadd local MonthFE "Yes"
+	estadd local DOWFE   "Yes"
+
+	* (5) Spread + P_coal
+	ivreg2 gen_coal spread Phardcoal v_gas v_coal ///
+		baseload load vre i.ID##i.year i.dow i.month, robust bw(2)
+	eststo sec_spread_coal
+	estadd local CYFE    "Yes"
+	estadd local MonthFE "Yes"
+	estadd local DOWFE   "Yes"
+
+	esttab sec_ind_Pgas sec_ind_Pcoal sec_PgasPcoal sec_spread_gas sec_spread_coal ///
+		using "table_2sri_compound.tex", replace fragment booktabs label se ///
+		alignment(c) nomtitles nonotes ///
+		prehead("\begin{tabular}{l*{5}{c}}\toprule" ///
+				" & \multicolumn{1}{c}{(1)} & \multicolumn{1}{c}{(2)} & \multicolumn{1}{c}{(3)} & \multicolumn{1}{c}{(4)} & \multicolumn{1}{c}{(5)}\\ " ///
+				" & \multicolumn{1}{c}{2SRI} & \multicolumn{1}{c}{2SRI} & \multicolumn{1}{c}{2SRI} & \multicolumn{1}{c}{2SRI} & \multicolumn{1}{c}{2SRI}\\ " ///
+				" & \multicolumn{1}{c}{Coal gen.} & \multicolumn{1}{c}{Coal gen.} & \multicolumn{1}{c}{Coal gen.} & \multicolumn{1}{c}{Coal gen.} & \multicolumn{1}{c}{Coal gen.}\\ " ///
+				" & \multicolumn{1}{c}{$\mathbbm{1}(MC_{gas}>MC_{coal}) + P_{gas}$} & \multicolumn{1}{c}{$\mathbbm{1}(MC_{gas}>MC_{coal}) + P_{coal}$} & \multicolumn{1}{c}{$P_{gas} + P_{coal}$} & \multicolumn{1}{c}{$(MC_{gas}-MC_{coal}) + P_{gas}$} & \multicolumn{1}{c}{$(MC_{gas}-MC_{coal}) + P_{coal}$}\\ \midrule") ///
+		keep(coalcheaperthangas spread Pgas Phardcoal v_gas v_coal baseload load vre) ///
+		order(coalcheaperthangas spread Pgas Phardcoal v_gas v_coal baseload load vre) ///
+		stats(CYFE MonthFE DOWFE N r2, ///
+			  labels("Country$\times$Year FE" "Month FE" "Day-of-week FE" "Observations" "R-squared") ///
+			  fmt(0 0 0 0 3)) ///
+		star(* 0.10 ** 0.05 *** 0.01) ///
+		postfoot("\bottomrule\end{tabular}")
 
 
-** Figure 1b
+	
+*** Robustness: Expectations and Timing
+	tsset ID date, daily
+	gen ind_raw = coalcheaperthangas
+	label var ind_raw "\$\mathbbm{1}(MC_{gas}>MC_{coal})\$"
+	gen byte ind_raw_L1 = L1.ind_raw
+	gen byte ind_raw_L2 = L2.ind_raw
+	gen byte ind_raw_F1 = F1.ind_raw
+	gen byte ind_raw_F2 = F2.ind_raw
+	gen byte ind_raw_F3 = F3.ind_raw
+
+	* Orthogonalized lead (expectations proxy)
+	*    Regress raw lead on raw contemporaneous + two lags + controls, take residual
+	capture drop lead_ind_orth
+	reg ind_raw_F1 ind_raw ind_raw_L1 ind_raw_L2 ///
+		baseload load vre i.ID##i.year i.dow i.month
+	predict double lead_ind_orth, resid
+	label var lead_ind_orth "\$\widehat{\mathbbm{1}}^{\perp}_{t+1}\$"
+	reg ind_raw_F2 ind_raw ind_raw_L1 ind_raw_L2 ///
+		baseload load vre i.ID##i.year i.dow i.month
+	predict double lead2_ind_orth, resid
+	label var lead2_ind_orth "\$\widehat{\mathbbm{1}}^{\perp}_{t+2}\$"
+
+	
+	* Second-stage (2SRI/CF) timing specs
+	*    Include CF residuals and the expectations proxy; optional lag
+	* Spec (1): Indicator + expectations proxy
+	ivreg2 gen_coal ind_raw v_gas v_coal lead_ind_orth ///
+		baseload load vre i.ID##i.year i.dow i.month, robust bw(2)
+	eststo expect1
+	ivreg2 gen_coal ind_raw v_gas v_coal lead_ind_orth lead2_ind_orth ///
+		baseload load vre i.ID##i.year i.dow i.month, robust bw(2)
+	eststo expect2
+	ivreg2 gen_coal ind_raw v_gas v_coal lead_ind_orth ind_raw_L1 ///
+		baseload load vre i.ID##i.year i.dow i.month, robust bw(2)
+	eststo expect3
+	lincom ind_raw + ind_raw_L1
+	scalar CumEff = r(estimate)
+	scalar CumSE  = r(se)
+	scalar CumP   = 2*normal(-abs(r(estimate)/r(se)))   // two-sided p-value
+	* Joint significance of the two indicators:
+	test ind_raw ind_raw_L1
+	scalar JointF = r(F)
+	scalar JointP = r(p)
+	
+	
+
+	** Baltic Panamax (BPI) and Baltic Supramax (BSI)
+	* Here, BPI (Baltic Panamax Index) = BDI (Baltic Dry Index)
+** BDI / BSI
+ivreg2 gen_coal ///
+    coalcheaperthangas v_gas v_coal ///
+    bdi ///
+    baseload load vre i.ID##i.year i.dow i.month, robust bw(2)	
+ivreg2 gen_coal ///
+    coalcheaperthangas v_gas v_coal ///
+    bdi l.bdi ///
+    baseload load vre i.ID##i.year i.dow i.month, robust bw(2)	
+	** joint significance test:
+	test bdi + L.bdi = 0
+ivreg2 gen_coal ///
+    coalcheaperthangas v_gas v_coal ///
+    bsi ///
+    baseload load vre i.ID##i.year i.dow i.month, robust bw(2)	
+ivreg2 gen_coal ///
+    coalcheaperthangas v_gas v_coal ///
+    bsi l.bsi ///
+    baseload load vre i.ID##i.year i.dow i.month, robust bw(2)	
+	test bsi + L.bsi = 0
+
+
+*** FIGURES
+
 sort date
 grstyle init
 grstyle set mesh
 gen crisis = 0
 replace crisis = 650 if date>=date("01jul2021", "DMY") & date<=date("31dec2022", "DMY")
-twoway area crisis date if country=="Germany", color(gs14%50) || line MC_gas date if country=="Germany", lcolor(blue) lwidth(thin) || line MC_coal date if country=="Germany", lcolor(red) lwidth(thin) lpattern(dash) graphregion(color(white)) bgcolor(white) ytitle("Marginal costs (€/MWh)") xtitle("") scale(0.7) title("") recast(line) xmtick(##10) title("") recast(line) ymlabel(##5, angle(0)) xlabel(`=d(1jan2015)' `=d(1jan2016)' `=d(1jan2017)' `=d(1jan2018)' `=d(1jan2019)' `=d(1jan2020)' `=d(1jan2021)' `=d(1jan2022)' `=d(1jan2023)') legend(row(3) order(2 "Marginal costs gas" 3 "Marginal costs coal") position(11) ring(0) ) ylabel(, angle(0)) ttext(630 `=d(01mar2022)' "Crisis period:", place(n)) ttext(605 `=d(01mar2022)' "510 days for which", place(n)) ttext(580 `=d(01mar2022)' "MC{subscript:coal} < MC{subscript:gas}", place(n))
+twoway area crisis date if country=="Germany", color(gs14%50) || line MC_gas date if country=="Germany", lcolor(blue) lwidth(thin) || line MC_coal date if country=="Germany", lcolor(red) lwidth(thin) lpattern(dash) graphregion(color(white)) bgcolor(white) ytitle("Marginal costs (€/MWh)") xtitle("") scale(0.7) title("") recast(line) xmtick(##10) title("") recast(line) ymlabel(##5, angle(0)) xlabel(`=d(1jan2015)' `=d(1jan2016)' `=d(1jan2017)' `=d(1jan2018)' `=d(1jan2019)' `=d(1jan2020)' `=d(1jan2021)' `=d(1jan2022)' `=d(1jan2023)') legend(row(3) order(2 "Marginal costs gas" 3 "Marginal costs coal") position(11) ring(0) ) ylabel(, angle(0)) ttext(630 `=d(01mar2022)' "Crisis period", place(n))
 	graph export MarginalCosts.png, replace
 drop crisis
 
+gen crisis = 0	
+replace crisis = 400 if date>=date("01jul2021", "DMY") & date<=date("31dec2022", "DMY")
+twoway area crisis date if country=="Germany", color(gs14%50) || tsline Pgas if country=="Germany", lcolor(blue) lwidth(thin) || tsline Phardcoal if country=="Germany", lcolor(red) lwidth(thin) lpattern(dash) || tsline Pco2 if country=="Germany", lcolor(green) lwidth(thin) lpattern(longdash) yaxis(2) graphregion(color(white)) bgcolor(white) ytitle("Prices of natural gas and hard coal (€/MWh)") ytitle("Price EU emission allowances (€/tCO2)", axis(2)) xtitle("") scale(0.7) title("") recast(line) ymlabel(##5, angle(0)) ylabel(0(10)120, axis(2) angle(0)) xlabel(`=d(1jan2015)' `=d(1jan2016)' `=d(1jan2017)' `=d(1jan2018)' `=d(1jan2019)' `=d(1jan2020)' `=d(1jan2021)' `=d(1jan2022)' `=d(1jan2023)' `=d(1jan2024)') legend(row(3) order(2 "Dutch TTF gas future" 3 "API2 coal future" 4 "EUA carbon emissions future") position(11) ring(0)) ylabel(, angle(0)) ttext(380 `=d(10apr2022)' "Crisis period", place(n))
+graph export CommodityPrices.png, replace
+drop crisis
 
 
 sum Pco2 if date>=date("01jul2021", "DMY") & date<=date("31dec2022", "DMY")
@@ -643,6 +774,8 @@ drop crisis
 
 
 	
+	
+keep if country=="Czechia" | country=="Germany" | country=="Italy" | country=="Poland" | country=="Netherlands" | country=="Ireland"
 egen gen_all_coal = total(gen_coal), by(date)
 egen gen_all_gas = total(gen_gas), by(date)
 egen load_all = total(load), by(date)
@@ -657,13 +790,9 @@ collapse (sum) gen_all_coal gen_all_gas load_all em_all, by(yearmonth)
 tsset yearmonth, monthly
 gen crisis = 0	
 replace crisis = 700 if yearmonth>=ym(2021, 6) & yearmonth<=ym(2023,1)
-
-** Figure 2b
 twoway bar crisis yearmonth, lwidth(none) bcolor(gs14%50) || tsline gen_all_coal, lcolor(brown) lwidth(thin) || tsline gen_all_gas, lcolor(blue) lwidth(thin) || tsline load_all, lcolor(gray) lwidth(thin) graphregion(color(white)) bgcolor(white) scale(0.7) xtitle("") xlabel(#11) ytitle("Coal electricity, gas electricity, load (TWh)") ylabel(0(50)700) ttext(670 `=ym(2022, 4)' "Crisis period", place(n)) text(100 `=ym(2015, 2)' "Gas electr."  270 `=ym(2015, 2)' "Coal electr."  630 `=ym(2015, 2)' "Load", placement(east)) legend(off) //legend(order(2 "Coal-fired electricity" 3 "Gas-fired electricity" 4 "Load") row(1))
 	graph export coalgasload.png, replace
 drop crisis
-
-** Figure 2a
 gen crisis = 100	
 replace crisis = 300 if yearmonth>=ym(2021, 6) & yearmonth<=ym(2023,1)
 twoway bar crisis yearmonth, lwidth(none) bcolor(gs14%50) || tsline em_all, lcolor(black) lwidth(thin) || lfit em_all yearmonth if yearmonth>=ym(2015, 6) & yearmonth<ym(2021, 5), lpattern(dash) lcolor(gray) || lfit em_all yearmonth if yearmonth>=ym(2021, 5) & yearmonth<ym(2023, 2), lpattern(dash) lcolor(gray) graphregion(color(white)) bgcolor(white) ytitle("Million metric tons of CO2") scale(0.7) xtitle("") xlabel(#11) legend(off) ttext(290 `=ym(2022, 4)' "Crisis period", place(n)) ylabel(100(20)300)
